@@ -1,0 +1,47 @@
+@inject HttpClient Http
+
+<h3>Task List</h3>
+<ul>
+    @foreach (var task in tasks)
+    {
+        <li>@task.Title - @task.Priority</li>
+    }
+</ul>
+
+@code {
+    private List<TaskItem> tasks = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        tasks = await Http.GetFromJsonAsync<List<TaskItem>>("http://localhost:5000/api/tasks");
+    }
+}
+
+@code {
+    public class TaskItem
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string Priority { get; set; }
+        public bool IsCompleted { get; set; }
+    }
+}
+@inject NavigationManager Navigation
+@code {
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("http://localhost:5000/taskHub"))
+            .Build();
+
+        hubConnection.On<string>("TaskUpdated", (message) =>
+        {
+            Console.WriteLine($"Task Update: {message}");
+        });
+
+        await hubConnection.StartAsync();
+    }
+}
